@@ -1,34 +1,54 @@
-<?php namespace Illuminate\Console;
+<?php
 
-trait ConfirmableTrait {
+namespace Illuminate\Console;
 
-	/**
-	 * Confirm before proceeding with the action
-	 *
-	 * @return bool
-	 */
-	public function confirmToProceed()
-	{
-		if ($this->getLaravel()->environment() == 'production')
-		{
-			if ($this->option('force')) return true;
+use Closure;
 
-			$this->comment('**************************************');
-			$this->comment('*     Application In Production!     *');
-			$this->comment('**************************************');
-			$this->output->writeln('');
+trait ConfirmableTrait
+{
+    /**
+     * Confirm before proceeding with the action.
+     *
+     * This method only asks for confirmation in production.
+     *
+     * @param  string  $warning
+     * @param  \Closure|bool|null  $callback
+     * @return bool
+     */
+    public function confirmToProceed($warning = 'Application In Production!', $callback = null)
+    {
+        $callback = is_null($callback) ? $this->getDefaultConfirmCallback() : $callback;
 
-			$confirmed = $this->confirm('Do you really wish to run this command?');
+        $shouldConfirm = $callback instanceof Closure ? call_user_func($callback) : $callback;
 
-			if ( ! $confirmed)
-			{
-			    $this->comment('Command Cancelled!');
+        if ($shouldConfirm) {
+            if ($this->option('force')) {
+                return true;
+            }
 
-			    return false;
-			}
-		}
+            $this->alert($warning);
 
-		return true;
-	}
+            $confirmed = $this->confirm('Do you really wish to run this command?');
 
+            if (! $confirmed) {
+                $this->comment('Command Cancelled!');
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Get the default confirmation callback.
+     *
+     * @return \Closure
+     */
+    protected function getDefaultConfirmCallback()
+    {
+        return function () {
+            return $this->getLaravel()->environment() == 'production';
+        };
+    }
 }

@@ -1,43 +1,115 @@
 <?php
 
+namespace Illuminate\Tests\Database;
+
 use Mockery as m;
+use PHPUnit\Framework\TestCase;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
-class DatabaseEloquentRelationTest extends PHPUnit_Framework_TestCase {
+class DatabaseEloquentRelationTest extends TestCase
+{
+    public function tearDown()
+    {
+        m::close();
+    }
 
-	public function tearDown()
-	{
-		m::close();
-	}
+    public function testSetRelationFail()
+    {
+        $parent = new EloquentRelationResetModelStub;
+        $relation = new EloquentRelationResetModelStub;
+        $parent->setRelation('test', $relation);
+        $parent->setRelation('foo', 'bar');
+        $this->assertArrayNotHasKey('foo', $parent->toArray());
+    }
 
+    public function testTouchMethodUpdatesRelatedTimestamps()
+    {
+        $builder = m::mock(Builder::class);
+        $parent = m::mock(Model::class);
+        $parent->shouldReceive('getAttribute')->with('id')->andReturn(1);
+        $builder->shouldReceive('getModel')->andReturn($related = m::mock(\StdClass::class));
+        $builder->shouldReceive('whereNotNull');
+        $builder->shouldReceive('where');
+        $relation = new HasOne($builder, $parent, 'foreign_key', 'id');
+        $related->shouldReceive('getTable')->andReturn('table');
+        $related->shouldReceive('getUpdatedAtColumn')->andReturn('updated_at');
+        $now = \Carbon\Carbon::now();
+        $related->shouldReceive('freshTimestampString')->andReturn($now);
+        $builder->shouldReceive('update')->once()->with(['updated_at' => $now]);
 
-	public function testTouchMethodUpdatesRelatedTimestamps()
-	{
-		$builder = m::mock('Illuminate\Database\Eloquent\Builder');
-		$parent = m::mock('Illuminate\Database\Eloquent\Model');
-		$parent->shouldReceive('getAttribute')->with('id')->andReturn(1);
-		$builder->shouldReceive('getModel')->andReturn($related = m::mock('StdClass'));
-		$builder->shouldReceive('where');
-		$relation = new HasOne($builder, $parent, 'foreign_key', 'id');
-		$related->shouldReceive('getTable')->andReturn('table');
-		$related->shouldReceive('getUpdatedAtColumn')->andReturn('updated_at');
-		$related->shouldReceive('freshTimestampString')->andReturn(Carbon\Carbon::now());
-		$builder->shouldReceive('update')->once()->with(array('updated_at' => Carbon\Carbon::now()));
+        $relation->touch();
+    }
 
-		$relation->touch();
-	}
+    public function testSettingMorphMapWithNumericArrayUsesTheTableNames()
+    {
+        Relation::morphMap([EloquentRelationResetModelStub::class]);
 
+        $this->assertEquals([
+            'reset' => 'Illuminate\Tests\Database\EloquentRelationResetModelStub',
+        ], Relation::morphMap());
+
+        Relation::morphMap([], false);
+    }
+
+    public function testSettingMorphMapWithNumericKeys()
+    {
+        Relation::morphMap([1 => 'App\User']);
+
+        $this->assertEquals([
+            1 => 'App\User',
+        ], Relation::morphMap());
+
+        Relation::morphMap([], false);
+    }
+
+    public function testMacroable()
+    {
+        Relation::macro('foo', function () {
+            return 'foo';
+        });
+
+        $model = new EloquentRelationResetModelStub();
+        $relation = new EloquentRelationStub($model->newQuery(), $model);
+
+        $result = $relation->foo();
+        $this->assertEquals('foo', $result);
+    }
 }
 
-class EloquentRelationResetModelStub extends Illuminate\Database\Eloquent\Model {}
+class EloquentRelationResetModelStub extends Model
+{
+    protected $table = 'reset';
 
+    // Override method call which would normally go through __call()
 
-class EloquentRelationResetStub extends Illuminate\Database\Eloquent\Builder {
-	public function __construct() { $this->query = new EloquentRelationQueryStub; }
-	public function getModel() { return new EloquentRelationResetModelStub; }
+    public function getQuery()
+    {
+        return $this->newQuery()->getQuery();
+    }
 }
 
+class EloquentRelationStub extends Relation
+{
+    public function addConstraints()
+    {
+    }
 
-class EloquentRelationQueryStub extends Illuminate\Database\Query\Builder {
-	public function __construct() {}
+    public function addEagerConstraints(array $models)
+    {
+    }
+
+    public function initRelation(array $models, $relation)
+    {
+    }
+
+    public function match(array $models, \Illuminate\Database\Eloquent\Collection $results, $relation)
+    {
+    }
+
+    public function getResults()
+    {
+    }
 }

@@ -1,41 +1,54 @@
-<?php namespace Illuminate\Database\Schema;
+<?php
 
-class MySqlBuilder extends Builder {
+namespace Illuminate\Database\Schema;
 
-	/**
-	 * Determine if the given table exists.
-	 *
-	 * @param  string  $table
-	 * @return bool
-	 */
-	public function hasTable($table)
-	{
-		$sql = $this->grammar->compileTableExists();
+class MySqlBuilder extends Builder
+{
+    /**
+     * Determine if the given table exists.
+     *
+     * @param  string  $table
+     * @return bool
+     */
+    public function hasTable($table)
+    {
+        $table = $this->connection->getTablePrefix().$table;
 
-		$database = $this->connection->getDatabaseName();
+        return count($this->connection->select(
+            $this->grammar->compileTableExists(), [$this->connection->getDatabaseName(), $table]
+        )) > 0;
+    }
 
-		$table = $this->connection->getTablePrefix().$table;
+    /**
+     * Get the column listing for a given table.
+     *
+     * @param  string  $table
+     * @return array
+     */
+    public function getColumnListing($table)
+    {
+        $table = $this->connection->getTablePrefix().$table;
 
-		return count($this->connection->select($sql, array($database, $table))) > 0;
-	}
+        $results = $this->connection->select(
+            $this->grammar->compileColumnListing(), [$this->connection->getDatabaseName(), $table]
+        );
 
-	/**
-	 * Get the column listing for a given table.
-	 *
-	 * @param  string  $table
-	 * @return array
-	 */
-	public function getColumnListing($table)
-	{
-		$sql = $this->grammar->compileColumnExists();
+        return $this->connection->getPostProcessor()->processColumnListing($results);
+    }
 
-		$database = $this->connection->getDatabaseName();
+    /**
+     * Drop all tables from the database.
+     *
+     * @return void
+     */
+    public function dropAllTables()
+    {
+        $this->disableForeignKeyConstraints();
 
-		$table = $this->connection->getTablePrefix().$table;
+        foreach ($this->connection->select('SHOW TABLES') as $table) {
+            $this->drop(get_object_vars($table)[key($table)]);
+        }
 
-		$results = $this->connection->select($sql, array($database, $table));
-
-		return $this->connection->getPostProcessor()->processColumnListing($results);
-	}
-
+        $this->enableForeignKeyConstraints();
+    }
 }

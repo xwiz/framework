@@ -1,18 +1,24 @@
 {
     "name": "illuminate/http",
+    "description": "The Illuminate Http package.",
     "license": "MIT",
+    "homepage": "https://laravel.com",
+    "support": {
+        "issues": "https://github.com/laravel/framework/issues",
+        "source": "https://github.com/laravel/framework"
+    },
     "authors": [
         {
             "name": "Taylor Otwell",
-            "email": "taylorotwell@gmail.com"
+            "email": "taylor@laravel.com"
         }
     ],
     "require": {
-        "php": ">=5.4.0",
-        "illuminate/session": "4.3.*",
-        "illuminate/support": "4.3.*",
-        "symfony/http-foundation": "2.5.*",
-        "symfony/http-kernel": "2.5.*"
+        "php": ">=7.0",
+        "illuminate/session": "5.5.*",
+        "illuminate/support": "5.5.*",
+        "symfony/http-foundation": "~3.2",
+        "symfony/http-kernel": "~3.2"
     },
     "autoload": {
         "psr-4": {
@@ -21,8 +27,11 @@
     },
     "extra": {
         "branch-alias": {
-            "dev-master": "4.3-dev"
+            "dev-master": "5.5-dev"
         }
+    },
+    "config": {
+        "sort-packages": true
     },
     "minimum-stability": "dev"
 }
